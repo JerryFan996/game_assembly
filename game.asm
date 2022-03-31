@@ -34,14 +34,72 @@
 #
 #####################################################################
 .eqv BASE_ADDRESS 0x10008000
+.eqv KEYCHECK_ADDRESS 0xffff0000 
 .text
 main:
-	# let $a1 store the adress of charactor.(center)
+	# let ********* $a1 ********** store the adress of charactor.(center)
 	jal make_backgroud # make_backgroud()
 	jal initial_char
 	
+	li, $t7, BASE_ADDRESS
+	j check_loop
 	# --------------------------------------------------------------------
+check_loop:
+	li $v0, 32
+	li $a0, 40 # Wait one second (1000 milliseconds)
+	syscall
+	
+	jal check_key
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	beq $t2, -1, continue
+	beq $t2, 0x61, move_left       # a
+	beq $t2, 0x64, move_right   # d
+	beq $t2, 0x77, move_up      # w
+	beq $t2, 0x73, move_down   # s
+	jal update
+	j continue
+continue:
+	j check_loop
+move_left:
+	addi, $a1, $a1, -4
+	j check_loop
+move_right:
+	addi, $a1, $a1, 4
+	j check_loop
+move_up:
+	addi, $a1, $a1, -256
+	j check_loop
+move_down:
+	addi, $a1, $a1, 256
+	j check_loop
+	# --------------------------------------------------------------------
+update:
+	# update(BASE_ADDRESS, pst_char, pst_obstacles...), return null and edit a1, obstacles and redraw graph array.
+	
+	# --------------------------------------------------------------------
+check_key:
+	# check_key(), use the stack
+	# return the key input in acci code
+	# valid acci code or -1 (do not enter any key)
+	li $t0, KEYCHECK_ADDRESS
+	lw $t1, 0($t0)
+	beq $t1, 1, keypress_happened
+	j keypress_unhappened
+keypress_happened:
+	addi $sp, $sp, -4
+	lw $t2, 4($t0)
+	sw $t2, 0($sp)
+	jr $ra
+keypress_unhappened:
+	addi $sp, $sp, -4
+	li $t2, -1
+	sw $t2, 0($sp)
+	jr $ra
+	# --------------------------------------------------------------------
+	
 initial_char:
+	# initial_char(), do not use the stack
 	li $t0, BASE_ADDRESS
 	addi $a1, $t0, 12924
 	li $t1, 0x00ff00
@@ -59,7 +117,7 @@ initial_char:
 	
 	# --------------------------------------------------------------------
 make_backgroud:
-	# make_backgroud()
+	# make_backgroud(), do not use the stack
 	li $t0, BASE_ADDRESS 
 	addi $t0, $t0, 16380 # $t0 stores the left_right address in the form
 	li $t1, 0xff0000 # $t1 stores the red colour code
