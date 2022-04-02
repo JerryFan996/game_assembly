@@ -35,11 +35,19 @@
 #####################################################################
 .eqv BASE_ADDRESS 0x10008000
 .eqv KEYCHECK_ADDRESS 0xffff0000 
+.data
+str: .asciiz "THE GAME IS OVER\n"
+str1: .asciiz "***********\n "
+str2: .asciiz "------------\n "
 .text
 main:
 	# let ********* $a1 ********** store the adress of charactor.(center)
+	# let ********* $a2 ********** store the adress of platform_1.(center)
+	# let ********* $a3 ********** store the adress of platform_2.(center)
+	# let ********* $s0 ********** store the adress of platform_3.(center)
 	jal make_backgroud # make_backgroud()
 	jal initial_char
+	jal initial_platform
 	
 	li, $t7, BASE_ADDRESS
 	j check_loop
@@ -57,26 +65,197 @@ check_loop:
 	beq $t2, 0x64, move_right   # d
 	beq $t2, 0x77, move_up      # w
 	beq $t2, 0x73, move_down   # s
-	jal update
+	jal update_char
 	j continue
 continue:
 	j check_loop
 move_left:
+	li $t0, 256
+	li $t1, BASE_ADDRESS
+	sub $t2, $a1, $t1
+	div $t2, $t0
+	mfhi $t3
+	beq $t3, 4, touch_bdr
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
 	addi, $a1, $a1, -4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char	
+	
 	j check_loop
 move_right:
+	li $t0, 256
+	li $t1, BASE_ADDRESS
+	sub $t2, $a1, $t1
+	div $t2, $t0
+	mfhi $t3
+	beq $t3, 248, touch_bdr
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
 	addi, $a1, $a1, 4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char	
+	
 	j check_loop
 move_up:
+	li $t0, 256
+	li $t1, BASE_ADDRESS
+	sub $t2, $a1, $t1
+	div $t2, $t0
+	mflo $t3
+	beq $t3, 1, touch_bdr
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+
 	addi, $a1, $a1, -256
+	
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+		
+	jal update_char		
+	
 	j check_loop
 move_down:
-	addi, $a1, $a1, 256
-	j check_loop
-	# --------------------------------------------------------------------
-update:
-	# update(BASE_ADDRESS, pst_char, pst_obstacles...), return null and edit a1, obstacles and redraw graph array.
+	# whether the char touch the lava
+	li $t0, 256
+	li $t1, BASE_ADDRESS
+	sub $t2, $a1, $t1
+	div $t2, $t0
+	mflo $t3
+	beq $t3, 61, touch_lava
+	# whether the char touch the platforms
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
 	
+	li $v0, 1
+	add $a0, $zero, $t5
+	syscall
+	
+	beq $t6, 0, valid_move_down
+	bgt $t6, 0, touch_bdr
+	
+#   --------------------------------------
+touch_platform:		
+	# touch_platform(char, platform)
+	# return 0 if char not on the platform. return 1 if char on the platform
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	addi $t3, $t2, -492
+	addi $t4, $t2, -532
+	
+	bgt $t1, $t3, untouch_greater
+	blt $t1, $t4, untouch_smaller
+	
+	
+	addi $t5, $zero, 1
+	addi $sp, $sp, -4
+	sw $t5, 0($sp)
+	jr $ra
+untouch_greater:
+	li $t5, 0
+	addi $sp, $sp, -4
+	sw $t5, 0($sp)
+	jr $ra
+untouch_smaller:
+	li $t5, 0
+	addi $sp, $sp, -4
+	sw $t5, 0($sp)
+	jr $ra
+#   --------------------------------------
+valid_move_down:
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, 256
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char	
+	
+	j check_loop
+touch_bdr:
+	j check_loop
+touch_lava:
+	jal reset_screen
+	# print gameover
+	li $v0, 4
+	la $a0, str
+	syscall
+	j main
+	# --------------------------------------------------------------------
+update_char:
+	# update(old char, new char), return null and edit a1, obstacles and redraw graph array.
+	lw $t1, 0($sp)
+	addi, $sp, $sp, 4  # new
+	lw $t2, 0($sp)
+	addi, $sp, $sp, 4  # old
+	sub $t3, $t1, $t2
+	
+	li $t4, 0x000000 # black
+	li $t5, 0x00ff00 # green
+	beq  $t3, -4, updt_char_left
+	beq  $t3, 4, updt_char_right
+	beq  $t3, 256, updt_char_down
+	beq  $t3, -256, updt_char_up
+	jr $ra
+updt_char_left:
+	sw $t5, -8($t2)
+	sw $t5, 248($t2)
+	sw $t5, -264($t2)
+	sw $t4, 4($t2)
+	sw $t4, -252($t2)
+	sw $t4, 260($t2)
+	jr $ra
+updt_char_right:
+	sw $t5, 8($t2)
+	sw $t5, -248($t2)
+	sw $t5, 264($t2)
+	sw $t4, -4($t2)
+	sw $t4, 252($t2)
+	sw $t4, -260($t2)
+	jr $ra
+updt_char_down:
+	sw $t5, 512($t2)
+	sw $t5, 508($t2)
+	sw $t5, 516($t2)
+	sw $t4, -256($t2)
+	sw $t4, -252($t2)
+	sw $t4, -260($t2)
+	jr $ra
+updt_char_up:
+	sw $t5, -512($t2)
+	sw $t5, -508($t2)
+	sw $t5, -516($t2)
+	sw $t4, 256($t2)
+	sw $t4, 252($t2)
+	sw $t4, 260($t2)
+	jr $ra
 	# --------------------------------------------------------------------
 check_key:
 	# check_key(), use the stack
@@ -113,6 +292,35 @@ initial_char:
 	sw $t1, -256($a1)
 	sw $t1, -260($a1)
 	jr $ra
+	jr $ra
+	# --------------------------------------------------------------------
+initial_platform:
+	# initial_char(), do not use the stack
+	li $t0, BASE_ADDRESS
+	li $t1, 0x0000ff
+	# initialize platform_1
+	addi $a2, $t0, 13436
+	sw $t1, 0($a2)
+	sw $t1, 4($a2)
+	sw $t1, -4($a2)
+	sw $t1, 8($a2)
+	sw $t1, -8($a2)
+	sw $t1, 12($a2)
+	sw $t1, -12($a2)
+	sw $t1, 16($a2)
+	sw $t1, -16($a2)
+	# initialize platform_2
+	addi $a3, $t0, 10812
+	sw $t1, 0($a3)
+	sw $t1, 4($a3)
+	sw $t1, -4($a3)
+	sw $t1, 8($a3)
+	sw $t1, -8($a3)
+	sw $t1, 12($a3)
+	sw $t1, -12($a3)
+	sw $t1, 16($a3)
+	sw $t1, -16($a3)
+	jr $ra
 	# --------------------------------------------------------------------
 	
 	# --------------------------------------------------------------------
@@ -143,6 +351,21 @@ bottem_fire:
 	j bottem_fire
 end_func:
 	jr $ra
+	# -------------------------------------------------------------------
+	# -------------------------------------------------------------------
+reset_screen:
+	li $t1, 4096
+	li $t0, 0
+	li $t3, BASE_ADDRESS
+	li $t4, 0x000000
+reset_loop:
+	beq $t0, $t1, end_func
+# end_func:
+#	jr $ra
+	sw $t4, 0($t3)
+	addi $t3, $t3, 4
+	addi $t0, $t0, 1
+	j reset_loop
 	# -------------------------------------------------------------------
 	
 
