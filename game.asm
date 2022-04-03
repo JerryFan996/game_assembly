@@ -56,7 +56,47 @@ check_loop:
 	li $v0, 32
 	li $a0, 40 # Wait one second (1000 milliseconds)
 	syscall
+	# whether the char touch the lava
+	li $t0, 256
+	li $t1, BASE_ADDRESS
+	sub $t2, $a1, $t1
+	div $t2, $t0
+	mflo $t3
+	beq $t3, 61, touch_lava
+	# check whether the char on the platform
+
+	# whether the char touch the platforms
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
 	
+	beq $t6, 0, gravity_down
+check_loop_1:
 	jal check_key
 	lw $t2, 0($sp)
 	addi $sp, $sp, 4
@@ -70,58 +110,194 @@ check_loop:
 continue:
 	j check_loop
 move_left:
+	# whether the char touch the left screen
 	li $t0, 256
 	li $t1, BASE_ADDRESS
 	sub $t2, $a1, $t1
 	div $t2, $t0
 	mfhi $t3
 	beq $t3, 4, touch_bdr
-	# push old, new
-	addi, $sp, $sp, -4
+	# whether the char touch the ceiling of board
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
-	addi, $a1, $a1, -4
-	addi, $sp, $sp, -4
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform_left
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform_left
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_left
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
 	
-	jal update_char	
-	
-	j check_loop
+	beq $t6, 0, valid_move_left
+	bgt $t6, 0, touch_bdr
 move_right:
+	# whether the char touch the right screen
 	li $t0, 256
 	li $t1, BASE_ADDRESS
 	sub $t2, $a1, $t1
 	div $t2, $t0
 	mfhi $t3
 	beq $t3, 248, touch_bdr
-	# push old, new
-	addi, $sp, $sp, -4
+	# whether the char touch the ceiling of board
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
-	addi, $a1, $a1, 4
-	addi, $sp, $sp, -4
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform_right
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform_right
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_right
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
 	
-	jal update_char	
-	
-	j check_loop
+	beq $t6, 0, valid_move_right
+	bgt $t6, 0, touch_bdr
 move_up:
+	# whether the char touch the platforms
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	
+	beq $t6, 0, touch_bdr
+	
+	li $t1, 8
+	addi $sp, $sp, -4
+	sw $t1, 0($sp)
+	jal move_up_n_times
+	
+	li $t1, 4
+	addi $sp, $sp, -4
+	sw $t1, 0($sp)
+	jal move_up_n_times
+	
+	li $t1, 2
+	addi $sp, $sp, -4
+	sw $t1, 0($sp)
+	jal move_up_n_times
+	
+	li $t1, 1
+	addi $sp, $sp, -4
+	sw $t1, 0($sp)
+	jal move_up_n_times
+	j check_loop
+move_up_n_times:
+	lw $s1, 0($sp)
+	addi $sp, $sp, 4
+	li $s2, 0
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+move_up_n_times_loop:
+	beq $s2, $s1, move_up_n_times_return
+	# whether the char touch the ceiling
 	li $t0, 256
 	li $t1, BASE_ADDRESS
 	sub $t2, $a1, $t1
 	div $t2, $t0
 	mflo $t3
 	beq $t3, 1, touch_bdr
-	# push old, new
-	addi, $sp, $sp, -4
+	# whether the char touch the ceiling of board
+	li $t6, 0
+	# check platform_1
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
-
-	addi, $a1, $a1, -256
-	
-	addi, $sp, $sp, -4
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	jal touch_platform_up
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_2
+	addi $sp, $sp, -4
 	sw $a1, 0($sp)
-		
-	jal update_char		
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	jal touch_platform_up
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_up
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
 	
-	j check_loop
+	bgt $t6, 0, touch_bdr
+	jal valid_move_up_func
+	addi $s2, $s2, 1
+	j move_up_n_times_loop
+move_up_n_times_return:
+	li $v0, 32
+	li $a0, 40 # Wait one second (1000 milliseconds)
+	syscall
+	lw $ra, 0($sp)
+	addi, $sp, $sp, 4
+	jr $ra
 move_down:
 	# whether the char touch the lava
 	li $t0, 256
@@ -137,7 +313,7 @@ move_down:
 	sw $a1, 0($sp)
 	addi $sp, $sp, -4
 	sw $a2, 0($sp)
-	jal touch_platform
+	jal touch_platform_down
 	lw $t1, 0($sp)
 	addi $sp, $sp, 4
 	add $t6, $t6, $t1
@@ -146,21 +322,26 @@ move_down:
 	sw $a1, 0($sp)
 	addi $sp, $sp, -4
 	sw $a3, 0($sp)
-	jal touch_platform
+	jal touch_platform_down
 	lw $t1, 0($sp)
 	addi $sp, $sp, 4
 	add $t6, $t6, $t1
-	
-	li $v0, 1
-	add $a0, $zero, $t5
-	syscall
-	
+	# whether the char touch the platform_3
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	jal touch_platform_down
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	add $t6, $t6, $t1
+		
 	beq $t6, 0, valid_move_down
 	bgt $t6, 0, touch_bdr
 	
 #   --------------------------------------
-touch_platform:		
-	# touch_platform(char, platform)
+touch_platform_down:
+	# touch_platform_down(char, platform)
 	# return 0 if char not on the platform. return 1 if char on the platform
 	lw $t2, 0($sp)
 	addi $sp, $sp, 4
@@ -169,23 +350,90 @@ touch_platform:
 	addi $t3, $t2, -492
 	addi $t4, $t2, -532
 	
-	bgt $t1, $t3, untouch_greater
-	blt $t1, $t4, untouch_smaller
-	
+	bgt $t1, $t3, untouch_down
+	blt $t1, $t4, untouch_down
 	
 	addi $t5, $zero, 1
 	addi $sp, $sp, -4
 	sw $t5, 0($sp)
 	jr $ra
-untouch_greater:
+untouch_down:
 	li $t5, 0
 	addi $sp, $sp, -4
 	sw $t5, 0($sp)
 	jr $ra
-untouch_smaller:
+#   --------------------------------------
+touch_platform_up:
+	# touch_platform_down(char, platform)
+	# return 0 if char not on the platform. return 1 if char on the platform
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	addi $t3, $t2, 492
+	addi $t4, $t2, 532
+	
+	blt $t1, $t3, untouch_up
+	bgt $t1, $t4, untouch_up
+	
+	addi $t5, $zero, 1
+	addi $sp, $sp, -4
+	sw $t5, 0($sp)
+	jr $ra
+untouch_up:
 	li $t5, 0
 	addi $sp, $sp, -4
 	sw $t5, 0($sp)
+	jr $ra
+#   --------------------------------------
+touch_platform_left:
+	# touch_platform_right(char, platform)
+	# return 0 if char not on the platform. return 1 if char on the platform
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	addi $t3, $t1, -256
+	addi $t4, $t1, 256
+	addi $t5, $t2, 24
+	
+	beq $t5, $t1, touch_left
+	beq $t5, $t3, touch_left
+	beq $t5, $t4, touch_left
+	
+	addi $s7, $zero, 0
+	addi $sp, $sp, -4
+	sw $s7, 0($sp)
+	jr $ra
+touch_left:
+	li $s7, 1
+	addi $sp, $sp, -4
+	sw $s7, 0($sp)
+	jr $ra
+#   --------------------------------------
+touch_platform_right:
+	# touch_platform_right(char, platform)
+	# return 0 if char not on the platform. return 1 if char on the platform
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	addi $t3, $t1, -256
+	addi $t4, $t1, 256
+	addi $t5, $t2, -24
+	
+	beq $t5, $t1, touch_right
+	beq $t5, $t3, touch_right
+	beq $t5, $t4, touch_right
+	
+	addi $s7, $zero, 0
+	addi $sp, $sp, -4
+	sw $s7, 0($sp)
+	jr $ra
+touch_right:
+	li $s7, 1
+	addi $sp, $sp, -4
+	sw $s7, 0($sp)
 	jr $ra
 #   --------------------------------------
 valid_move_down:
@@ -199,6 +447,63 @@ valid_move_down:
 	jal update_char	
 	
 	j check_loop
+gravity_down:
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, 256
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char
+	j check_loop_1
+valid_move_up:
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, -256
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char
+	j check_loop_1
+valid_move_up_func:
+	addi, $sp, $sp, -4
+	sw $ra, 0($sp)
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, -256
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+valid_move_left:
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, -4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char	
+	
+	j check_loop
+valid_move_right:
+	# push old, new
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, 4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char	
+	
+	j check_loop
+#   --------------------------------------
 touch_bdr:
 	j check_loop
 touch_lava:
@@ -320,6 +625,17 @@ initial_platform:
 	sw $t1, -12($a3)
 	sw $t1, 16($a3)
 	sw $t1, -16($a3)
+	# initialize platform_3
+	addi $s0, $t0, 8892
+	sw $t1, 0($s0)
+	sw $t1, 4($s0)
+	sw $t1, -4($s0)
+	sw $t1, 8($s0)
+	sw $t1, -8($s0)
+	sw $t1, 12($s0)
+	sw $t1, -12($s0)
+	sw $t1, 16($s0)
+	sw $t1, -16($s0)
 	jr $ra
 	# --------------------------------------------------------------------
 	
