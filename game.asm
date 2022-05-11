@@ -33,23 +33,40 @@
 # - (write here, if any)
 #
 #####################################################################
+# https://youtu.be/YC7dBJ-KXZE
+
 .eqv BASE_ADDRESS 0x10008000
 .eqv KEYCHECK_ADDRESS 0xffff0000 
 .data
 str: .asciiz "THE GAME IS OVER\n"
-str1: .asciiz "***********\n "
-str2: .asciiz "------------\n "
+str1: .asciiz "YOU WIN\n "
+str2: .asciiz "score:  "
+str3: .asciiz "\n "
 .text
 main:
 	# let ********* $a1 ********** store the adress of charactor.(center)
 	# let ********* $a2 ********** store the adress of platform_1.(center)
 	# let ********* $a3 ********** store the adress of platform_2.(center)
 	# let ********* $s0 ********** store the adress of platform_3.(center)
+	# let ********* $t7 ********** store the adress of star.(center)
+	# let ********* $s2 ********** store the score you get now.(center)
 	jal make_backgroud # make_backgroud()
 	jal initial_char
 	jal initial_platform
+	li $s5, 0
+	li $s6, 0
+	li $s4, 0
+	li $s2, 0
 	
-	li, $t7, BASE_ADDRESS
+	add $t1, $zero, $a1
+	jal random_star
+	lw $t7, 0($sp)
+	addi $sp, $sp, 4
+	add $a1, $zero, $t1
+	li $t5, 0x00ffff
+	sw $t5, 0($t7)
+	
+
 	j check_loop
 	# --------------------------------------------------------------------
 check_loop:
@@ -63,8 +80,42 @@ check_loop:
 	div $t2, $t0
 	mflo $t3
 	beq $t3, 61, touch_lava
-	# check whether the char on the platform
-
+	# whether the char touch the star
+	lw $t1, 0($t7)
+	beq $t1, 0x000000, get_star
+	# whether the char touch the highest platform
+	beq $s2, 1, win
+	# move the platform 1
+	addi $sp, $sp, -4
+	sw $a2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s5, 0($sp)
+	jal move_pf
+	lw $s5, 0($sp)
+	addi $sp, $sp, 4
+	lw $a2, 0($sp)
+	addi $sp, $sp, 4
+	# move the platform 2
+	addi $sp, $sp, -4
+	sw $a3, 0($sp)
+	addi $sp, $sp, -4
+	sw $s6, 0($sp)
+	jal move_pf
+	lw $s6, 0($sp)
+	addi $sp, $sp, 4
+	lw $a3, 0($sp)
+	addi $sp, $sp, 4
+	# move the platform 3
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+	addi $sp, $sp, -4
+	sw $s4, 0($sp)
+	jal move_pf
+	lw $s4, 0($sp)
+	addi $sp, $sp, 4
+	lw $s0, 0($sp)
+	addi $sp, $sp, 4
+	
 	# whether the char touch the platforms
 	li $t6, 0
 	# check platform_1
@@ -96,7 +147,9 @@ check_loop:
 	add $t6, $t6, $t1
 	
 	beq $t6, 0, gravity_down
+	
 check_loop_1:
+	
 	jal check_key
 	lw $t2, 0($sp)
 	addi $sp, $sp, 4
@@ -245,11 +298,11 @@ move_up:
 move_up_n_times:
 	lw $s1, 0($sp)
 	addi $sp, $sp, 4
-	li $s2, 0
+	li $t4, 0
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
 move_up_n_times_loop:
-	beq $s2, $s1, move_up_n_times_return
+	beq $t4, $s1, move_up_n_times_return
 	# whether the char touch the ceiling
 	li $t0, 256
 	li $t1, BASE_ADDRESS
@@ -289,7 +342,7 @@ move_up_n_times_loop:
 	
 	bgt $t6, 0, touch_bdr
 	jal valid_move_up_func
-	addi $s2, $s2, 1
+	addi $t4, $t4, 1
 	j move_up_n_times_loop
 move_up_n_times_return:
 	li $v0, 32
@@ -513,6 +566,13 @@ touch_lava:
 	la $a0, str
 	syscall
 	j main
+win:
+	jal reset_screen
+	# print win
+	li $v0, 4
+	la $a0, str1
+	syscall
+	j main
 	# --------------------------------------------------------------------
 update_char:
 	# update(old char, new char), return null and edit a1, obstacles and redraw graph array.
@@ -603,6 +663,7 @@ initial_platform:
 	# initial_char(), do not use the stack
 	li $t0, BASE_ADDRESS
 	li $t1, 0x0000ff
+	li $t2, 0xFFFF00
 	# initialize platform_1
 	addi $a2, $t0, 13436
 	sw $t1, 0($a2)
@@ -614,6 +675,7 @@ initial_platform:
 	sw $t1, -12($a2)
 	sw $t1, 16($a2)
 	sw $t1, -16($a2)
+
 	# initialize platform_2
 	addi $a3, $t0, 10812
 	sw $t1, 0($a3)
@@ -638,7 +700,210 @@ initial_platform:
 	sw $t1, -16($s0)
 	jr $ra
 	# --------------------------------------------------------------------
+move_pf:
+	# s3 = 0 left, s3 = 1 right
+	lw $s3, 0($sp) 
+	addi $sp, $sp, 4
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
 	
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	beqz $s3, move_pf_left
+	j move_pf_right
+move_pf_left:
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jal move_pf_left_func
+	lw $s3, 0($sp)
+	addi $sp, $sp, 4
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+move_pf_right:
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jal move_pf_right_func
+	lw $s3, 0($sp)
+	addi $sp, $sp, 4
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+move_pf_left_func:
+	# move_pf_left(address, direction_changed), return the moved address of the plarform	
+	
+	li $t0, BASE_ADDRESS 
+	li $t1, 256
+	lw $s3, 0($sp)
+	addi $sp, $sp, 4
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	
+	li $t5, 0x0000ff
+	li $t6, 0x000000
+	
+	addi, $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	sub $t3, $t2, $t0
+	div $t3, $t1
+	mfhi $t4
+	ble $t4, 16, hold_still_left
+	# update the platform
+	sw $t6, 16($t2)
+	sw $t5, -20($t2)
+	addi $t2, $t2, -4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+
+	# check whether the char touch the platform
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	jal touch_platform_down
+	# push old, new
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	beq $t1, 1, move_left_with_pf
+	
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+hold_still_left:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	li $s3, 1
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+move_left_with_pf:	
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, -4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char
+
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+	# --------------------------------------------------------------------
+move_pf_right_func:
+	# move_pf_left(address, direction_changed), return the moved address of the plarform	
+	
+	li $t0, BASE_ADDRESS 
+	li $t1, 256
+	lw $s3, 0($sp)
+	addi $sp, $sp, 4
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	
+	li $t5, 0x0000ff
+	li $t6, 0x000000
+	
+	addi, $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	sub $t3, $t2, $t0
+	div $t3, $t1
+	mfhi $t4
+	bge $t4, 240, hold_still_right
+	# update the platform
+	sw $t6, -16($t2)
+	sw $t5, 20($t2)
+	addi $t2, $t2, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+
+	# check whether the char touch the platform
+	addi $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	jal touch_platform_down
+	# push old, new
+	lw $t1, 0($sp)
+	addi $sp, $sp, 4
+	beq $t1, 1, move_right_with_pf
+	
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+hold_still_right:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	li $s3, 0
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
+move_right_with_pf:	
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	addi, $a1, $a1, 4
+	addi, $sp, $sp, -4
+	sw $a1, 0($sp)
+	
+	jal update_char
+
+	lw $t2, 0($sp)
+	addi $sp, $sp, 4
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	addi $sp, $sp, -4
+	sw $s3, 0($sp)
+	jr $ra
 	# --------------------------------------------------------------------
 make_backgroud:
 	# make_backgroud(), do not use the stack
@@ -683,8 +948,37 @@ reset_loop:
 	addi $t0, $t0, 1
 	j reset_loop
 	# -------------------------------------------------------------------
-	
-
+random_star:
+	li $v0, 42
+	li $a0, 0
+	li $a1, 4095
+	syscall
+	li $t2, BASE_ADDRESS
+	li $t3, 4
+	mul $t3, $a0, $t3
+	add $t2, $t3, $t2
+	addi $sp, $sp, -4
+	sw $t2, 0($sp)
+	jr $ra
+get_star:
+	add $t1, $zero, $a1
+	jal random_star
+	lw $t7, 0($sp)
+	addi $sp, $sp, 4
+	add $a1, $zero, $t1
+	li $t5, 0x00ffff
+	sw $t5, 0($t7)
+	li $v0, 4
+	la $a0, str2
+	syscall
+	addi $s2, $s2, 1
+	li $v0, 1
+	add $a0, $zero, $s2
+	syscall
+	li $v0, 4
+	la $a0, str3
+	syscall
+	j check_loop
 end:
 	li $v0, 10 # terminate the program gracefully
 	syscall
